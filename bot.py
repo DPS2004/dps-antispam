@@ -73,23 +73,27 @@ async def trust(message):
     await message.author.add_roles(message.guild.get_role(int(config['DISCORD']['trustedRole'])))
 
 async def purgeChannel(message,channel,time):
-    print("started channel" + channel.name)
-    async for m in channel.history(limit=20,after=time):
+    #print("started channel " + channel.name)
+    async for m in channel.history(limit=20):
         if m.author == message.author:
             await m.delete()
+            print("deleted message in " + channel.name)
+    #print("ok done with " + channel.name)
     
 async def purge(message):
     time = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)
     for channel in message.guild.channels:
-        if isinstance(channel, discord.TextChannel):
+        if isinstance(channel, discord.TextChannel) and channel.permissions_for(message.guild.me).view_channel:
             asyncio.create_task(purgeChannel(message,channel,time))
+            #print(channel.name)
+            #await purgeChannel(message,channel,time);
 
 async def untrust(message, attachment, closestDistance, closestFilename):
     await message.author.add_roles(message.guild.get_role(int(config['DISCORD']['untrustedRole'])))
     referenceImage = discord.File(closestFilename)
     matchImage = await attachment.to_file()
     logChannel = message.guild.get_channel(int(config['DISCORD']['logChannel']))
-    await logChannel.send("hey bozos i found a spammer probably?+\n<@"+str(message.author.id)+">\ndistance: " + str(closestDistance) + " (threshold is " + config['SETTINGS']['distance'] + ")\nmatched filename: " + closestFilename,files = [matchImage,referenceImage])
+    await logChannel.send("hey bozos i found a spammer probably?\n<@"+str(message.author.id)+">\ndistance: " + str(closestDistance) + " (threshold is " + config['SETTINGS']['distance'] + ")\nmatched filename: " + closestFilename + "\nchannel: " + message.channel.name,files = [matchImage,referenceImage])
     await purge(message)
 
 @client.event
