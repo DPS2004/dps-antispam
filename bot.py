@@ -22,7 +22,8 @@ configExample['DISCORD'] = {
     'guild' : '1234567890'
 }
 configExample['SETTINGS'] = {
-    'distance': '1000'
+    'distance': '1000',
+    'logFiles': False
 }
 
 with open('example.ini', 'w') as configfile:
@@ -33,6 +34,8 @@ if not os.path.isfile('config.ini'):
 
 config = configparser.ConfigParser()
 config.read(['example.ini','config.ini'])
+
+os.makedirs("loggedImages", exist_ok=True)
 
 ###image matching###
 hashes = []
@@ -93,12 +96,14 @@ async def untrust(message, attachment, closestDistance, closestFilename):
     referenceImage = discord.File(closestFilename)
     matchImage = await attachment.to_file()
     logChannel = message.guild.get_channel(int(config['DISCORD']['logChannel']))
-    await logChannel.send("hey bozos i found a spammer probably?\n<@"+str(message.author.id)+">\ndistance: " + str(closestDistance) + " (threshold is " + config['SETTINGS']['distance'] + ")\nmatched filename: " + closestFilename + "\nchannel: " + message.channel.name,files = [matchImage,referenceImage])
+    await logChannel.send("hey bozos i found a spammer probably?\n<@"+str(message.author.id)+">\ndistance: " + str(closestDistance) + " (threshold is " + config['SETTINGS']['distance'] + ")\nuser filename: " + attachment.filename + "\nmatched filename: " + closestFilename + "\nchannel: " + message.channel.name,files = [matchImage,referenceImage])
     await purge(message)
 
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
+    if config['SETTINGS']['logFiles']:
+        print("Logging files!")
     print(await tree.sync(guild=botGuild))
     print("synced commands")
 
@@ -106,6 +111,8 @@ async def on_ready():
 @client.event
 async def on_message(message):
     if (not message.guild) or message.author == client.user:
+        return
+    if not isinstance(message.author, discord.Member):
         return
     if message.author.get_role(int(config['DISCORD']['trustedRole'])):
         return
@@ -118,11 +125,17 @@ async def on_message(message):
     if not message.attachments:
         print("no attachments, probably a ok!")
         await trust(message)
+        return
     print("message has attachments")
+    
+    if config['SETTINGS']['logFiles']:
+        for attachment in message.attachments:
+            await attachment.save("loggedImages/" + message.author.name + "_" + attachment.filename)
     for attachment in message.attachments:
         # Save the attachment to a local file
         file = io.BytesIO()
         await attachment.save(file)
+            
         image = Image.open(file)
         ##image.show()
         targetHash = imagehash.phash(image,hash_size=64)
