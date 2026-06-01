@@ -140,7 +140,7 @@ async def on_message(message):
         ##image.show()
         targetHash = imagehash.phash(image,hash_size=64)
         closestDistance, closestFilename = getClosest(targetHash)
-        print(closestDistance, closestFilename)
+        print(attachment.filename, closestDistance, closestFilename)
         image.close()
         file.close()
         if closestDistance < int(config['SETTINGS']['distance']):
